@@ -1,0 +1,76 @@
+# NIVARA full-stack topology (CIPHER05 DevSecOps lab).
+# Run the app:        docker compose up --build
+# Run security tools: docker compose --profile security run --rm trivy image nivara-backend:latest
+#                     docker compose --profile security run --rm gitleaks
+
+services:
+  frontend:
+    build:
+      context: ./frontend-rust
+      dockerfile: Dockerfile
+    image: nivara-frontend:latest
+    ports:
+      - "3000:80"          # nginx serves the built WASM bundle
+    depends_on:
+      backend:
+        condition: service_healthy
+    labels:
+      org.opencontainers.image.description: "NIVARA Frontend"
+
+  backend:
+    build:
+      context: ./backend-python
+      dockerfile: Dockerfile
+    image: nivara-backend:latest
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: sqlite:///./data/bookstore.db
+      JWT_SECRET: ${JWT_SECRET:-nivara_dev_secret_change_in_prod}
+      DEBUG: "false"
+      TWIN_URL: http://backend:8000
+      SEED: ${SEED:-42}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
+      DEBUG_SQLI_MODE: ${DEBUG_SQLI_MODE:-false}
+      DEBUG_PRICE_MODE: ${DEBUG_PRICE_MODE:-false}
+      DEBUG_ACCESS_MODE: ${DEBUG_ACCESS_MODE:-false} # points to itself for twin simulation
+    volumes:
+      - bookstore-data:/app/data
+    healthcheck:
+      # python-slim has no curl; urllib avoids installing an extra OS package.
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=3)"
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    labels:
+      org.opencontainers.image.description: "NIVARA Backend"
+
+  # ---- Security tools: on-demand only (not started by `docker compose up`) ----
+  trivy:
+    image: aquasec/trivy:latest
+    profiles: ["security"]
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro   # lets `trivy image` read local images
+      - trivy-cache:/root/.cache/trivy
+      - .:/workspace:ro                                # for `trivy fs /workspace`
+    # entrypoint is `trivy`, so: docker compose --profile security run --rm trivy image nivara-backend:latest
+
+  gitleaks:
+    image: zricethezav/gitleaks:latest
+    profiles: ["security"]
+    volumes:
+      - .:/repo:ro
+    command: ["detect", "--source", "/repo", "--no-banner", "--verbose"]
+
+volumes:
+  bookstore-data:
+  trivy-cache:
+
+networks:
+  default:
+    name: nivara-network
