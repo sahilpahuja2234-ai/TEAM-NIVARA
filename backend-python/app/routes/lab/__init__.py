@@ -1,35 +1,12 @@
-"""/api/lab/* - scenario lifecycle control. Stubs: M3 (attack engine) fills these in."""
+"""/api/lab/* — scenario lifecycle control.
 
-from fastapi import APIRouter, HTTPException
+Sub-router: app/routes/lab/lab.py owns all route handlers.
+M3 (attack engine) fills the runner hook; M4 fills the scorer hook.
+"""
 
-from app.schemas.scenario import ScenarioResult
+from fastapi import APIRouter
+
+from app.routes.lab import lab
 
 router = APIRouter()
-
-def _not_implemented() -> HTTPException:
-    return HTTPException(status_code=501, detail="Not implemented yet (owned by M3: attack engine)")
-
-
-@router.get("/scenarios")
-def list_scenarios() -> list[dict]:
-    raise _not_implemented()
-
-
-@router.post("/run")
-def run_scenario() -> dict:
-    raise _not_implemented()
-
-
-@router.get("/status/{run_id}", response_model=ScenarioResult)
-def run_status(run_id: str):
-    raise _not_implemented()
-
-
-@router.post("/reset")
-def reset_twin() -> dict:
-    raise _not_implemented()
-
-
-@router.post("/replay/{run_id}")
-def replay_run(run_id: str) -> dict:
-    raise _not_implemented()
+router.include_router(lab.router)
