@@ -1,0 +1,11 @@
+.env
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# SQLite twin database and its WAL/SHM side files
+data/*.db
+data/*.db-wal
+data/*.db-shm

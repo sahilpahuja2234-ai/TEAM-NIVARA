@@ -1,0 +1,20 @@
+fastapi
+uvicorn[standard]
+sqlmodel
+aiosqlite
+python-jose[cryptography]
+passlib[bcrypt]
+python-dotenv
+# Pinned exactly: Faker's name/word data changes between releases, so an unpinned
+# version would silently change the "deterministic" dataset.
+faker==40.41.0
+httpx
+pytest
+pytest-asyncio
+
+# Additions to the agreed list:
+# - Pydantic v2 moved BaseSettings into its own package.
+pydantic-settings
+# - passlib is unmaintained and breaks against bcrypt 5.x (it raises on its
+#   internal 72-byte wrap-bug probe), so keep bcrypt on the 4.x line.
+bcrypt<5
