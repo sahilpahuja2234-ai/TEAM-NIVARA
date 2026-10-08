@@ -1,4 +1,6 @@
-"""Tests for Task 1 (BaseScenario, ScenarioRunner, EventCollector) and Task 2 (S04, S05)."""
+"""Tests for Task 1 (BaseScenario, ScenarioRunner, EventCollector),
+Task 2 (S04 SQL Injection, S05 Rate-Limit Failure), and
+Task 3 (S06 Broken Access Control, S07 Price/Coupon Manipulation)."""
 
 import json
 from unittest.mock import AsyncMock, patch
@@ -8,7 +10,7 @@ import pytest
 from sqlmodel import Session, select
 
 from app.db import models as m
-from app.db.models import Finding, RunStatus, ScenarioRun, SecurityEvent
+from app.db.models import Finding, Order, RunStatus, ScenarioRun, SecurityEvent, User
 from app.db.seed import seed_database, wipe
 from app.db.session import engine
 from app.lab.base_scenario import BaseScenario
@@ -16,6 +18,8 @@ from app.lab.event_collector import get_events, log_event
 from app.lab.runner import ScenarioNotFoundError, ScenarioRunner
 from scenarios.S04_sql_injection.scenario import SQLInjectionScenario
 from scenarios.S05_rate_limit.scenario import RateLimitScenario
+from scenarios.S06_insecure_api.scenario import InsecureApiScenario
+from scenarios.S07_price_coupon.scenario import PriceCouponScenario
 
 
 @pytest.fixture
@@ -243,3 +247,4 @@ async def test_s05_rate_limit_scenario_missed(db_session: Session):
     assert controls["rate_limiting"] == "missed"
     assert controls["account_lockout"] == "missed"
     assert controls["logging"] == "detected"
+

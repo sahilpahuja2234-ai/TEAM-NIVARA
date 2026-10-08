@@ -60,6 +60,11 @@ class BaseScenario(ABC):
         (not yet committed — run() sets run_id and commits)."""
         raise NotImplementedError
 
+    async def teardown(self, db: Session, twin_url: str) -> None:
+        """Clean up scenario fixtures or revert twin state after execution.
+        Subclasses may override this; default is a no-op."""
+        pass
+
     @abstractmethod
     def get_controls(self) -> dict[str, str]:
         """Return control_name -> 'detected'|'missed'|'partial' for every
@@ -70,7 +75,7 @@ class BaseScenario(ABC):
     # ---- orchestration ------------------------------------------------------
 
     async def run(self, run_id: str, db: Session, twin_url: str) -> dict:
-        """Full lifecycle: setup -> execute -> get_controls -> persist ->
+        """Full lifecycle: setup -> execute -> teardown -> get_controls -> persist ->
         build and return the shared result schema dict."""
         self._assert_safe_target(twin_url)
         self.run_id = run_id  # available to setup()/execute()/get_controls() via self.run_id
@@ -83,10 +88,17 @@ class BaseScenario(ABC):
             "ts": datetime.now(timezone.utc).isoformat(),
         }))
 
-        await self.setup(db, twin_url)
+        findings: list[Finding] = []
+        try:
+            await self.setup(db, twin_url)
 
-        async with httpx.AsyncClient(base_url=twin_url, timeout=10.0) as client:
-            findings = await self.execute(db, twin_url, client)
+            async with httpx.AsyncClient(base_url=twin_url, timeout=10.0) as client:
+                findings = await self.execute(db, twin_url, client)
+        finally:
+            try:
+                await self.teardown(db, twin_url)
+            except Exception as exc:
+                logger.warning("Scenario %s teardown error: %s", self.scenario_id, exc)
 
         controls = self.get_controls()
         self._validate_controls(controls)
