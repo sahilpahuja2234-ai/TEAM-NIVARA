@@ -1,0 +1,9 @@
+[build]
+target = "index.html"
+
+[serve]
+port = 3000
+
+# Same-origin API in dev: browser calls /api/* -> FastAPI (no CORS needed)
+[[proxy]]
+backend = "http://localhost:8000/api/"

@@ -1,0 +1,8 @@
+# Rust / Trunk build output
+target/
+dist/
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
