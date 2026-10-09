@@ -18,3 +18,5 @@ pydantic-settings
 # - passlib is unmaintained and breaks against bcrypt 5.x (it raises on its
 #   internal 72-byte wrap-bug probe), so keep bcrypt on the 4.x line.
 bcrypt<5
+jinja2
+
