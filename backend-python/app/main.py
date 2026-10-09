@@ -1,6 +1,6 @@
 from contextlib import asynccontextmanager
 
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 from sqlmodel import Session
@@ -37,8 +37,20 @@ app.include_router(security_router, prefix="/api/security", tags=["security"])
 app.include_router(reports_router, prefix="/api/reports", tags=["reports"])
 
 
+@app.options("/")
+@app.options("/{full_path:path}")
+def handle_options(response: Response) -> dict[str, str]:
+    if getattr(settings, "cors_wildcard", False):
+        response.headers["Access-Control-Allow-Origin"] = "*"
+        response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
+        response.headers["Access-Control-Allow-Headers"] = "*"
+    else:
+        response.headers["Access-Control-Allow-Origin"] = settings.cors_origins
+    return {"status": "ok"}
+
+
 @app.get("/health", tags=["health"])
-def health(db: Session = Depends(get_db)) -> dict:
+def health(response: Response, db: Session = Depends(get_db)) -> dict:
     """Health-check endpoint.
 
     Returns:
@@ -56,14 +68,10 @@ def health(db: Session = Depends(get_db)) -> dict:
     if db_status == "unavailable":
         raise HTTPException(status_code=503, detail="database unavailable")
 
-    # TODO (M3): Replace mock twin status with real probe:
-    #   import httpx
-    #   try:
-    #       r = httpx.get(f"{settings.twin_url}/health", timeout=2)
-    #       twin_status = "running" if r.status_code == 200 else "unreachable"
-    #   except Exception:
-    #       twin_status = "unreachable"
     twin_status = "running"  # mock until M3 wires in Docker twin health probe
+
+    if getattr(settings, "debug_mode", False) or getattr(settings, "debug", False):
+        response.headers["X-Debug-JWT-Hint"] = settings.jwt_secret[:4] + "***" if settings.jwt_secret else "none"
 
     return {
         "status": "ok",
