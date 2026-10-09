@@ -8,7 +8,11 @@ CORS_ORIGIN = "http://localhost:3000"
 def test_health(client):
     r = client.get("/health")
     assert r.status_code == 200
-    assert r.json() == {"status": "ok", "database": "ok"}
+    data = r.json()
+    assert data["status"] == "ok"
+    assert data["db"] == "connected"
+    assert data["version"] == "1.0.0"
+    assert data["twin"] == "running"
 
 
 def test_cors_allows_trunk_dev_server(client):
@@ -25,25 +29,18 @@ def test_cors_rejects_other_origins(client):
     assert "access-control-allow-origin" not in r.headers
 
 
-@pytest.mark.parametrize("group", ["store", "security", "reports"])
+@pytest.mark.parametrize("group", ["store", "security", "reports", "lab"])
 def test_route_groups_mounted(client, group):
     r = client.get(f"/api/{group}/ping")
     assert r.status_code == 200
     assert r.json()["group"] == group
 
 
-@pytest.mark.parametrize(
-    ("method", "path"),
-    [
-        ("get", "/api/lab/scenarios"),
-        ("post", "/api/lab/run"),
-        ("get", "/api/lab/status/RUN-0001"),
-        ("post", "/api/lab/reset"),
-        ("post", "/api/lab/replay/RUN-0001"),
-    ],
-)
-def test_lab_stubs_return_501(client, method, path):
-    assert getattr(client, method)(path).status_code == 501
+def test_lab_scenarios_mounted(client):
+    r = client.get("/api/lab/scenarios")
+    assert r.status_code == 200
+    assert len(r.json()) == 7
+
 
 
 def test_shared_result_schema_accepts_contract_example():

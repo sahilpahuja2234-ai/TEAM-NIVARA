@@ -400,6 +400,13 @@ def seed_database(
     return table_counts(session)
 
 
+def reset_twin(session: Session) -> dict[str, int]:
+    """Wipe all twin tables and re-seed the synthetic dataset."""
+    counts = seed_database(session, reset=True)
+    return counts or {}
+
+
+
 # Columns that legitimately differ between runs (see module docstring).
 _FINGERPRINT_SKIP = {
     "hashed_password", "created_at", "expires_at", "started_at", "finished_at",

@@ -44,13 +44,14 @@ def test_relative_sqlite_path_anchored_to_project(monkeypatch):
     assert s.database_url == f"sqlite:///{expected}"
 
 
-def test_anchored_path_is_not_percent_encoded(monkeypatch, tmp_path):
+def test_anchored_path_is_not_percent_encoded(monkeypatch):
     # A ":" in the project path (like "C:" on Windows) must stay as-is.
-    fake_base = tmp_path / "C:proj"
+    fake_base = Path("C:/proj")
     monkeypatch.setattr("app.config.BASE_DIR", fake_base)
     s = make(monkeypatch, DATABASE_URL="sqlite:///./data/bookstore.db")
     assert "%3A" not in s.database_url
     assert s.database_url == f"sqlite:///{(fake_base / 'data' / 'bookstore.db').as_posix()}"
+
 
 
 def test_absolute_and_non_sqlite_urls_untouched(monkeypatch):
