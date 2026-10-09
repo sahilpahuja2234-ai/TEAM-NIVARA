@@ -1,0 +1,15 @@
+pub mod book_detail;
+pub mod cart;
+pub mod catalog;
+pub mod checkout;
+pub mod home;
+pub mod lab_dashboard;
+pub mod lab_fix;
+pub mod lab_observe;
+pub mod lab_replay;
+pub mod lab_report;
+pub mod lab_run;
+pub mod lab_scenarios;
+pub mod login;
+pub mod orders;
+pub mod register;
