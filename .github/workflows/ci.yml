@@ -126,7 +126,7 @@ jobs:
 
       # --- Trivy: filesystem / SCA scan ---
       - name: Trivy — filesystem scan (HIGH + CRITICAL)
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           scan-type: fs
           scan-ref: .
@@ -200,7 +200,7 @@ jobs:
 
       # --- Trivy image scan: backend (CRITICAL = hard gate) ---
       - name: Trivy — image scan backend (CRITICAL)
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           image-ref: nivara-backend:test
           severity: CRITICAL
@@ -209,7 +209,7 @@ jobs:
 
       # --- Trivy image scan: frontend (informational — HIGH+CRITICAL) ---
       - name: Trivy — image scan frontend (HIGH+CRITICAL)
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           image-ref: nivara-frontend:test
           severity: HIGH,CRITICAL
