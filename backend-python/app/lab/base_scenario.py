@@ -103,9 +103,18 @@ class BaseScenario(ABC):
         controls = self.get_controls()
         self._validate_controls(controls)
 
-        # Finding only has run_id (FK to scenario_runs.id) — no scenario_id
-        # column of its own. The scenario is reachable via a join through
-        # ScenarioRun.scenario_id.
+        from app.db.models import ScenarioRun, RunStatus
+        run_row = db.get(ScenarioRun, run_id)
+        if not run_row:
+            run_row = ScenarioRun(
+                id=run_id,
+                scenario_id=self.scenario_id,
+                status=RunStatus.running.value,
+                started_at=datetime.now(timezone.utc),
+            )
+            db.add(run_row)
+            db.commit()
+
         for finding in findings:
             finding.run_id = run_id
             db.add(finding)

@@ -10,7 +10,7 @@ from sqlmodel import Session, select
 
 from app.db.models import Finding, RunStatus, ScenarioRun, SecurityEvent
 from app.db.seed import seed_database, wipe
-from app.db.session import engine
+from app.db.session import engine, init_db
 from app.lab.runner import ScenarioRunner
 from scenarios.S01_misconfiguration.scenario import MisconfigScenario
 from scenarios.S02_weak_dependency.scenario import WeakDepScenario
@@ -19,6 +19,7 @@ from scenarios.S03_leaked_credential.scenario import FIXTURE_PATH, LeakedCredent
 
 @pytest.fixture
 def db_session():
+    init_db()
     with Session(engine) as session:
         seed_database(session, reset=True)
         yield session
@@ -60,7 +61,13 @@ async def test_s01_misconfiguration_vulnerable_mode(db_session: Session):
 
     transport = httpx.MockTransport(mock_handler)
 
-    with patch("httpx.AsyncClient", lambda **kw: httpx.AsyncClient(transport=transport, **kw)):
+    _orig_client = httpx.AsyncClient
+
+    def _make_client(**kw):
+        kw.pop("transport", None)
+        return _orig_client(transport=transport, **kw)
+
+    with patch("httpx.AsyncClient", _make_client):
         result = await scenario.run(run_id, db_session, "http://localhost:8000")
 
     assert result["scenario_id"] == "S01"
@@ -114,7 +121,13 @@ async def test_s01_misconfiguration_hardened_mode(db_session: Session):
 
     transport = httpx.MockTransport(mock_handler)
 
-    with patch("httpx.AsyncClient", lambda **kw: httpx.AsyncClient(transport=transport, **kw)):
+    _orig_client = httpx.AsyncClient
+
+    def _make_client(**kw):
+        kw.pop("transport", None)
+        return _orig_client(transport=transport, **kw)
+
+    with patch("httpx.AsyncClient", _make_client):
         result = await scenario.run(run_id, db_session, "http://localhost:8000")
 
     controls = result["controls"]
@@ -138,7 +151,13 @@ async def test_s01_fix_helper():
         return httpx.Response(404)
 
     transport = httpx.MockTransport(mock_handler)
-    with patch("httpx.AsyncClient", lambda **kw: httpx.AsyncClient(transport=transport, **kw)):
+    _orig_client = httpx.AsyncClient
+
+    def _make_client(**kw):
+        kw.pop("transport", None)
+        return _orig_client(transport=transport, **kw)
+
+    with patch("httpx.AsyncClient", _make_client):
         success = await scenario.fix("http://localhost:8000")
 
     assert success is True
@@ -327,7 +346,13 @@ async def test_runner_executes_s01_s02_s03(db_session: Session):
 
         transport = httpx.MockTransport(mock_handler)
 
-        with patch("httpx.AsyncClient", lambda **kw: httpx.AsyncClient(transport=transport, **kw)), \
+        _orig_client = httpx.AsyncClient
+
+        def _make_client(**kw):
+            kw.pop("transport", None)
+            return _orig_client(transport=transport, **kw)
+
+        with patch("httpx.AsyncClient", _make_client), \
              patch("subprocess.run", return_value=MagicMock(returncode=1, stdout=json.dumps({"Results": []}))):
             result = await runner.run(run.id, db_session, "http://localhost:8000")
 

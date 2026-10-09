@@ -12,7 +12,7 @@ from sqlmodel import Session, select
 from app.db import models as m
 from app.db.models import Finding, Order, RunStatus, ScenarioRun, SecurityEvent, User
 from app.db.seed import seed_database, wipe
-from app.db.session import engine
+from app.db.session import engine, init_db
 from app.lab.base_scenario import BaseScenario
 from app.lab.event_collector import get_events, log_event
 from app.lab.runner import ScenarioNotFoundError, ScenarioRunner
@@ -24,6 +24,7 @@ from scenarios.S07_price_coupon.scenario import PriceCouponScenario
 
 @pytest.fixture
 def db_session():
+    init_db()
     with Session(engine) as session:
         seed_database(session, reset=True)
         yield session
@@ -131,12 +132,12 @@ async def test_scenario_runner_run_and_replay(db_session: Session):
 
     # Run S04
     with patch.object(SQLInjectionScenario, "execute", new_callable=AsyncMock) as mock_exec, \
-         patch.object(SQLInjectionScenario, "setup", new_callable=AsyncMock) as mock_setup:
+         patch.object(SQLInjectionScenario, "setup", new_callable=AsyncMock) as mock_setup, \
+         patch.object(SQLInjectionScenario, "get_controls", return_value={"sql_injection_protection": "detected", "logging": "detected"}):
         mock_exec.return_value = [
             Finding(control="sql_injection_protection", result="detected", detail="safe"),
             Finding(control="logging", result="detected", detail="logged"),
         ]
-        SQLInjectionScenario.get_controls = lambda self: {"sql_injection_protection": "detected", "logging": "detected"}
 
         result = await runner.run(run_id, db_session, "http://localhost:8000")
         assert result["scenario_id"] == "S04"

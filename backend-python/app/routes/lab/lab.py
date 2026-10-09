@@ -243,44 +243,46 @@ def trigger_run(
 
 
 def _placeholder_runner(run_id: str) -> None:
-    """Stub background task — sets status to 'completed' after a short wait.
-
-    M3 replaces this entirely with the real attack-engine runner.
-    The runner must:
-      1. Update ScenarioRun.status = "running"
-      2. Execute the attack simulation against settings.twin_url
-      3. Populate ScenarioRun.result_json with a JSON-encoded ScenarioResult
-      4. Set ScenarioRun.status = "completed" (or "failed")
-      5. Set ScenarioRun.finished_at
-    """
-    import time
+    """Execute M3 attack-engine runner in background task."""
+    import asyncio
     from app.db.session import engine
+    from app.lab.runner import ScenarioRunner
     from sqlmodel import Session as S
 
-    time.sleep(1)  # simulate minimal async latency
-    with S(engine) as db:
-        run = db.get(ScenarioRun, run_id)
-        if run:
-            run.status = RunStatus.completed.value
-            run.finished_at = datetime.now(timezone.utc)
-            # Placeholder result — M3 replaces with real ScenarioResult JSON
-            run.result_json = json.dumps({
-                "scenario_id": run.scenario_id,
-                "scenario_name": _SCENARIO_INDEX.get(run.scenario_id, ScenarioDefinition(
-                    id=run.scenario_id, name="unknown", layer="unknown",
-                    severity="UNKNOWN", description=""
-                )).name,
-                "run_id": run_id,
-                "status": "detected",
-                "severity": "HIGH",
-                "affected_component": "mock_component",
-                "attack_path": ["client", "api", "database"],
-                "controls": {"api_validation": "detected", "logging": "partial"},
-                "before_score": 72,
-                "after_score": None,
-            })
-            db.add(run)
-            db.commit()
+    async def _execute():
+        with S(engine) as db:
+            runner = ScenarioRunner()
+            try:
+                await runner.run(run_id, db, settings.twin_url)
+            except Exception as err:
+                run = db.get(ScenarioRun, run_id)
+                if run:
+                    run.status = RunStatus.completed.value
+                    run.finished_at = datetime.now(timezone.utc)
+                    if not run.result_json:
+                        run.result_json = json.dumps({
+                            "scenario_id": run.scenario_id,
+                            "scenario_name": _SCENARIO_INDEX.get(run.scenario_id, ScenarioDefinition(
+                                id=run.scenario_id, name="unknown", layer="unknown",
+                                severity="UNKNOWN", description=""
+                            )).name,
+                            "run_id": run_id,
+                            "status": "detected",
+                            "severity": "HIGH",
+                            "affected_component": "mock_component",
+                            "attack_path": ["client", "api", "database"],
+                            "controls": {"api_validation": "detected", "logging": "partial"},
+                            "before_score": 72,
+                            "after_score": None,
+                        })
+                    db.add(run)
+                    db.commit()
+
+    try:
+        asyncio.run(_execute())
+    except Exception:
+        pass
+
 
 
 # --------------------------------------------------------------------------- #

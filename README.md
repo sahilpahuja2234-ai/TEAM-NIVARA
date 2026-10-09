@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # NIVARA-AGNITA-2026 
 
 [![CI](https://github.com/sahilpahuja2234-ai/TEAM-NIVARA/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/sahilpahuja2234-ai/TEAM-NIVARA/actions/workflows/ci.yml)
@@ -52,7 +51,4 @@ Expected result for scenario S07 (Price/Coupon Manipulation): **before 61, after
 | 4:40 | **CI proof** | Open the GitHub Actions run: tests, Trivy and Gitleaks gates, and the pull request requirement. |
 
 If the UI misbehaves on stage, the CLI fallback is `python scripts/generate_report.py RUN_ID -f html -o report.html`.
-=======
-TIME START
->>>>>>> 579b1ad7c47ddd6cba00a4f5ed0686a52f358389
 
