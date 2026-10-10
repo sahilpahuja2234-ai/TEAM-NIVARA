@@ -1,9 +1,9 @@
-use crate::api::{get_json, post_json, ApiError};
+use crate::api::{get_json, post_json_as, ApiError};
 use crate::components::{
     controls_matrix::control_icon, error_box::ApiErrorBox, progress_panel::ProgressPanel,
     score_ring::ScoreRing,
 };
-use crate::models::{ControlStatus, ScenarioRun, ScoreInfo};
+use crate::models::{ControlStatus, RunStarted, ScenarioRun, ScoreInfo};
 use crate::poll::poll_run;
 use crate::snapshot;
 use crate::util::pretty_name;
@@ -117,10 +117,14 @@ pub fn LabReplay() -> impl IntoView {
     let data = create_local_resource(run_id, move |rid| {
         let alive = alive.clone();
         async move {
-            post_json(&format!("/api/lab/replay/{rid}"), &serde_json::json!({})).await?;
+            // The backend starts a NEW run for the replay; poll and read findings
+            // from that run, but read before/after scores from the original run.
+            let started: RunStarted =
+                post_json_as(&format!("/api/lab/replay/{rid}"), &serde_json::json!({})).await?;
+            let replay_id = started.run_id;
             current.set("Replaying scenario against the fixed twin…".to_string());
             poll_run(
-                &rid,
+                &replay_id,
                 &alive,
                 |st| {
                     steps.set(st.step_lines());
@@ -134,7 +138,7 @@ pub fn LabReplay() -> impl IntoView {
             .await?;
             let scores = get_json::<ScoreInfo>(&format!("/api/security/scores/{rid}")).await?;
             let after =
-                get_json::<ScenarioRun>(&format!("/api/security/findings/{rid}")).await?;
+                get_json::<ScenarioRun>(&format!("/api/security/findings/{replay_id}")).await?;
             Ok::<ReplayData, ApiError>(ReplayData { scores, after })
         }
     });

@@ -202,6 +202,42 @@ def generate_report(
 
 
 # --------------------------------------------------------------------------- #
+# GET /api/reports/generate/:run_id   (used by the Leptos Report page)
+# --------------------------------------------------------------------------- #
+@router.get(
+    "/generate/{run_id}",
+    summary="Generate (and store) the HTML security report for a run; returns it inline",
+)
+def generate_report_inline(
+    run_id: str,
+    db: Annotated[Session, Depends(get_db)],
+) -> dict:
+    """Frontend-friendly variant of POST /generate/{run_id}.
+
+    Renders the real M4 report (before/after scores, controls, gaps), stores it
+    as a Report row and returns ``{"report_id", "run_id", "html"}`` so the page
+    can show it in a frame and offer a download via /download/{report_id}.
+    """
+    from app.security.report_generator import save_report
+
+    run = _get_run_or_404(run_id, db)
+    if run.status not in ("completed", "failed"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Run '{run_id}' has not completed yet (status={run.status})",
+        )
+
+    report_id = save_report(run_id, "html", db)
+    report = db.get(Report, report_id) if report_id is not None else None
+    if report is None:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Report could not be generated",
+        )
+    return {"report_id": report.id, "run_id": run_id, "html": report.content}
+
+
+# --------------------------------------------------------------------------- #
 # GET /api/reports/download/:report_id
 # --------------------------------------------------------------------------- #
 @router.get(

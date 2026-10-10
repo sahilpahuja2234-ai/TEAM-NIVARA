@@ -21,7 +21,15 @@ class ConfigUpdateRequest(BaseModel):
 
 @router.post("/_config", tags=["lab"])
 def update_twin_config(cfg: ConfigUpdateRequest) -> dict[str, Any]:
-    """Internal admin endpoint to toggle debug vulnerability modes on twin."""
+    """Internal admin endpoint to toggle debug vulnerability modes on twin.
+
+    Once "Apply Fix" has been used for a scenario, requests to switch its
+    vulnerable flag back ON are ignored, so a replay really exercises the fixed
+    twin (a fresh run or a twin reset clears the fix).
+    """
+    for flag in ("debug_sqli_mode", "debug_price_mode", "debug_access_mode"):
+        if getattr(cfg, flag) is True and lab.fix_blocks_flag(flag):
+            setattr(cfg, flag, False)
     if cfg.debug_sqli_mode is not None:
         settings.debug_sqli_mode = cfg.debug_sqli_mode
     if cfg.debug_price_mode is not None:

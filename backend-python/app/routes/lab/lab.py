@@ -10,6 +10,7 @@ All responses are realistic mock data until M3 wires in the runner.
 from __future__ import annotations
 
 import json
+import logging
 from datetime import datetime, timezone
 from typing import Annotated
 
@@ -29,6 +30,28 @@ from app.schemas.lab import (
 )
 
 router = APIRouter(tags=["lab"])
+logger = logging.getLogger("nivara.lab.routes")
+
+# --------------------------------------------------------------------------- #
+# Applied-fix state (in-process, like the settings flags it controls)
+# --------------------------------------------------------------------------- #
+# Each scenario's setup() re-enables its vulnerable flag through /api/lab/_config,
+# which would undo "Apply Fix" before a replay.  We remember which scenarios have
+# been fixed so _config can refuse to turn their flag back on until a *fresh* run
+# of that scenario (or a twin reset) starts from the vulnerable baseline again.
+_FIXED_SCENARIOS: set[str] = set()
+_FLAG_FOR_SCENARIO: dict[str, str] = {
+    "S04": "debug_sqli_mode",
+    "S06": "debug_access_mode",
+    "S07": "debug_price_mode",
+}
+
+
+def fix_blocks_flag(flag: str) -> bool:
+    """True if the scenario that owns *flag* has had its fix applied."""
+    return any(
+        _FLAG_FOR_SCENARIO.get(sid) == flag for sid in _FIXED_SCENARIOS
+    )
 
 
 @router.get("/ping", summary="Lab ping endpoint")
@@ -236,13 +259,56 @@ def trigger_run(
     db.add(run)
     db.commit()
 
+    # A fresh run always starts from the vulnerable baseline.
+    _FIXED_SCENARIOS.discard(scenario_id)
+
     # TODO (M3): swap placeholder for the real runner
     background_tasks.add_task(_run_scenario_background, run_id)
 
     return RunStarted(run_id=run_id)
 
 
-def _run_scenario_background(run_id: str) -> None:
+def _patch_result_json(db: Session, run_id: str, **fields) -> None:
+    """Merge *fields* (e.g. before_score=61) into a run's stored result_json."""
+    run = db.get(ScenarioRun, run_id)
+    if run is None:
+        return
+    try:
+        data = json.loads(run.result_json) if run.result_json else {}
+    except (json.JSONDecodeError, TypeError):
+        data = {}
+    if not isinstance(data, dict):
+        return
+    data.update(fields)
+    run.result_json = json.dumps(data)
+    db.add(run)
+    db.commit()
+
+
+async def _record_scores(db: Session, run_id: str, original_run_id: str | None) -> None:
+    """M4 hook: persist ScoreSnapshot rows once a run's findings exist.
+
+    - Normal run   -> "before" snapshot for run_id.
+    - Replay run   -> "after" snapshot stored under the ORIGINAL run id, scored
+                      from the replay run's findings, so /api/security/scores/{original}
+                      returns before + after + delta.
+    Never raises: scoring problems must not break the run itself.
+    """
+    from app.security.scoring import score_run
+
+    try:
+        if original_run_id is None:
+            before = await score_run(run_id, "before", db)
+            _patch_result_json(db, run_id, before_score=before)
+        else:
+            after = await score_run(original_run_id, "after", db, findings_from=run_id)
+            _patch_result_json(db, original_run_id, after_score=after)
+            _patch_result_json(db, run_id, after_score=after)
+    except Exception:  # pragma: no cover - defensive
+        logger.exception("could not record score for run %s", run_id)
+
+
+def _run_scenario_background(run_id: str, original_run_id: str | None = None) -> None:
     import asyncio
 
     from sqlmodel import Session as S
@@ -254,6 +320,8 @@ def _run_scenario_background(run_id: str) -> None:
         with S(engine) as db:
             runner = ScenarioRunner()
             await runner.run(run_id, db, settings.twin_url)
+            # M4: score the finished run (replays score the ORIGINAL run's "after").
+            await _record_scores(db, run_id, original_run_id)
 
     asyncio.run(_execute())
 
@@ -315,6 +383,7 @@ def reset_twin(db: Annotated[Session, Depends(get_db)]) -> dict:
     # TODO (M3): add Docker twin restart here
     from app.db.seed import reset_twin as _db_reset
     _db_reset(db)
+    _FIXED_SCENARIOS.clear()
     return {"status": "ok", "detail": "Twin reset and re-seeded", "timestamp": _utcnow_iso()}
 
 
@@ -409,6 +478,9 @@ def apply_fix(
         "S07": "debug_price_mode",
     }
     flag = _flag_map.get(run.scenario_id)
+    # Remember the fix so the replay's setup() can't switch the vulnerability
+    # back on (see _FIXED_SCENARIOS / /api/lab/_config).
+    _FIXED_SCENARIOS.add(run.scenario_id)
     if flag:
         # Flip in-process settings to False (secure state)
         setattr(settings, flag, False)
@@ -454,7 +526,7 @@ def replay_run(
     db.add(new_run)
     db.commit()
 
-    # TODO (M3): replace with real runner
-    background_tasks.add_task(_run_scenario_background, new_run_id)
+    # The replay's findings become the "after" score of the ORIGINAL run.
+    background_tasks.add_task(_run_scenario_background, new_run_id, run_id)
 
     return RunStarted(run_id=new_run_id)

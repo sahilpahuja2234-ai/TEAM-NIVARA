@@ -201,7 +201,12 @@ def score_breakdown(findings: Sequence[Finding]) -> dict[str, dict]:
 # DB-backed operations (called by FastAPI routes — M2 will wire these)
 # ---------------------------------------------------------------------------
 
-async def score_run(run_id: str, stage: str, db: Session) -> int:
+async def score_run(
+    run_id: str,
+    stage: str,
+    db: Session,
+    findings_from: str | None = None,
+) -> int:
     """Compute score for *run_id* at *stage* ("before" | "after"), persist it.
 
     Idempotent: if a ScoreSnapshot already exists for the same run/stage it is
@@ -213,14 +218,19 @@ async def score_run(run_id: str, stage: str, db: Session) -> int:
     run_id : str  e.g. "RUN-0012"
     stage  : str  "before" or "after"
     db     : SQLModel Session (injected by FastAPI get_db dependency)
+    findings_from : optional run id whose Finding rows are scored instead of
+        *run_id*'s own.  Used by replay: the post-fix findings belong to the
+        replay run, but the "after" snapshot is stored under the original run
+        so before/after live side by side.
 
     Returns
     -------
     int — the newly computed score (0–100)
     """
-    # Fetch all findings for this run
+    # Fetch all findings for this run (or for the replay run, see findings_from)
+    source_run_id = findings_from or run_id
     findings: list[Finding] = list(
-        db.exec(select(Finding).where(Finding.run_id == run_id)).all()
+        db.exec(select(Finding).where(Finding.run_id == source_run_id)).all()
     )
 
     score = compute_score(findings)
