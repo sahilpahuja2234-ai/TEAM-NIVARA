@@ -112,7 +112,7 @@ pub fn Catalog() -> impl IntoView {
                             let list = resp.books();
                             let n = list.len();
                             let has_next = match total {
-                                Some(t) => ((page.get_untracked() * PAGE_SIZE) as i64) < t,
+                                   Some(t) => ((page.get_untracked() * PAGE_SIZE) as i64) < t,
                                 None => n >= PAGE_SIZE,
                             };
                             view! {

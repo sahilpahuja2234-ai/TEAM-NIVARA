@@ -237,51 +237,25 @@ def trigger_run(
     db.commit()
 
     # TODO (M3): swap placeholder for the real runner
-    background_tasks.add_task(_placeholder_runner, run_id)
+    background_tasks.add_task(_run_scenario_background, run_id)
 
     return RunStarted(run_id=run_id)
 
 
-def _placeholder_runner(run_id: str) -> None:
-    """Execute M3 attack-engine runner in background task."""
+def _run_scenario_background(run_id: str) -> None:
     import asyncio
-    from app.db.session import engine
-    from app.lab.runner import ScenarioRunner
+
     from sqlmodel import Session as S
 
-    async def _execute():
+    from app.db.session import engine
+    from app.lab.runner import ScenarioRunner
+
+    async def _execute() -> None:
         with S(engine) as db:
             runner = ScenarioRunner()
-            try:
-                await runner.run(run_id, db, settings.twin_url)
-            except Exception as err:
-                run = db.get(ScenarioRun, run_id)
-                if run:
-                    run.status = RunStatus.completed.value
-                    run.finished_at = datetime.now(timezone.utc)
-                    if not run.result_json:
-                        run.result_json = json.dumps({
-                            "scenario_id": run.scenario_id,
-                            "scenario_name": _SCENARIO_INDEX.get(run.scenario_id, ScenarioDefinition(
-                                id=run.scenario_id, name="unknown", layer="unknown",
-                                severity="UNKNOWN", description=""
-                            )).name,
-                            "run_id": run_id,
-                            "status": "detected",
-                            "severity": "HIGH",
-                            "affected_component": "mock_component",
-                            "attack_path": ["client", "api", "database"],
-                            "controls": {"api_validation": "detected", "logging": "partial"},
-                            "before_score": 72,
-                            "after_score": None,
-                        })
-                    db.add(run)
-                    db.commit()
+            await runner.run(run_id, db, settings.twin_url)
 
-    try:
-        asyncio.run(_execute())
-    except Exception:
-        pass
+    asyncio.run(_execute())
 
 
 
@@ -481,6 +455,6 @@ def replay_run(
     db.commit()
 
     # TODO (M3): replace with real runner
-    background_tasks.add_task(_placeholder_runner, new_run_id)
+    background_tasks.add_task(_run_scenario_background, new_run_id)
 
     return RunStarted(run_id=new_run_id)

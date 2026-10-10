@@ -57,7 +57,7 @@ fn replay_body(d: ReplayData, rid: String) -> impl IntoView {
         .filter(|(_, c)| *c != ControlStatus::Detected)
         .collect();
 
-    let before_i = d.scores.before_score.unwrap_or(0.0).round() as i32;
+        let before_i = d.scores.before_score.unwrap_or(0.0).round() as i32;
     let after_i = d.scores.after_score.unwrap_or(0.0).round() as i32;
     let delta = d.scores.delta;
     let delta_class = match delta {

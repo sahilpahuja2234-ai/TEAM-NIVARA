@@ -67,7 +67,7 @@ fn observe_body(run: ScenarioRun, rid: String) -> impl IntoView {
         <div class="obs-grid">
             <section class="panel">
                 <h2>"Attack Path"</h2>
-                <AttackPath nodes=run.attack_path.clone() detected_at=run.detected_at.clone()/>
+                <AttackPath nodes=run.attack_path.clone() detected_at=run.detected_at.clone().unwrap_or_default()/>
             </section>
             <section class="panel">
                 <h2>"Controls Matrix"</h2>

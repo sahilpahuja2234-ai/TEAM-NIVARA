@@ -19,8 +19,8 @@ services:
 
   backend:
     build:
-      context: ./backend-python
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: backend-python/Dockerfile
     image: nivara-backend:latest
     ports:
       - "8000:8000"
@@ -28,7 +28,7 @@ services:
       DATABASE_URL: sqlite:///./data/bookstore.db
       JWT_SECRET: ${JWT_SECRET:-nivara_dev_secret_change_in_prod}
       DEBUG: "false"
-      TWIN_URL: http://backend:8000
+      TWIN_URL: http://localhost:8000
       SEED: ${SEED:-42}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
       DEBUG_SQLI_MODE: ${DEBUG_SQLI_MODE:-false}

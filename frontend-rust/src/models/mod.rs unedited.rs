@@ -141,10 +141,9 @@ pub struct ScenarioRun {
     #[serde(default, deserialize_with = "de_controls")]
     pub controls: Vec<(String, ControlStatus)>,
     #[serde(default)]
-pub before_score: Option<f64>,
-#[serde(default)]
-pub after_score: Option<f64>,
-  
+    pub before_score: f64,
+    #[serde(default)]
+    pub after_score: f64,
     /// Optional: the attack-path node where detection occurred.
     #[serde(default, alias = "detection_point", alias = "detected_node")]
     pub detected_at: Option<String>,
@@ -543,11 +542,10 @@ pub struct FixInfo {
 
 #[derive(Debug, Clone, Default, Deserialize)]
 pub struct ScoreInfo {
-    /// Backend returns `null` until the before/after snapshots exist.
     #[serde(default)]
-    pub before_score: Option<f64>,
+    pub before_score: f64,
     #[serde(default)]
-    pub after_score: Option<f64>,
+    pub after_score: f64,
     #[serde(default)]
     pub delta: Option<f64>,
     #[serde(default, deserialize_with = "de_controls")]

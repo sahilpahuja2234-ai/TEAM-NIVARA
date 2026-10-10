@@ -6,10 +6,11 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-COPY requirements.txt .
+COPY backend-python/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY . .
+COPY backend-python/ ./
+COPY scenarios/ ./scenarios/
 
 # Seed deterministic synthetic data at build time.
 # On first run the named volume is initialised from this directory.
