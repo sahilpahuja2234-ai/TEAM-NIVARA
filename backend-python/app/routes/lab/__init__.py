@@ -1,35 +1,52 @@
-"""/api/lab/* - scenario lifecycle control. Stubs: M3 (attack engine) fills these in."""
+"""/api/lab/* - scenario lifecycle control (M2 backend + M3 attack engine)."""
 
-from fastapi import APIRouter, HTTPException
+from typing import Any
+from fastapi import APIRouter
+from pydantic import BaseModel
 
-from app.schemas.scenario import ScenarioResult
+from app.config import settings
+from app.routes.lab import lab
 
 router = APIRouter()
-
-def _not_implemented() -> HTTPException:
-    return HTTPException(status_code=501, detail="Not implemented yet (owned by M3: attack engine)")
+router.include_router(lab.router)
 
 
-@router.get("/scenarios")
-def list_scenarios() -> list[dict]:
-    raise _not_implemented()
+class ConfigUpdateRequest(BaseModel):
+    debug_sqli_mode: bool | None = None
+    debug_price_mode: bool | None = None
+    debug_access_mode: bool | None = None
+    debug_mode: bool | None = None
+    cors_wildcard: bool | None = None
 
 
-@router.post("/run")
-def run_scenario() -> dict:
-    raise _not_implemented()
+@router.post("/_config", tags=["lab"])
+def update_twin_config(cfg: ConfigUpdateRequest) -> dict[str, Any]:
+    """Internal admin endpoint to toggle debug vulnerability modes on twin.
 
+    Once "Apply Fix" has been used for a scenario, requests to switch its
+    vulnerable flag back ON are ignored, so a replay really exercises the fixed
+    twin (a fresh run or a twin reset clears the fix).
+    """
+    for flag in ("debug_sqli_mode", "debug_price_mode", "debug_access_mode"):
+        if getattr(cfg, flag) is True and lab.fix_blocks_flag(flag):
+            setattr(cfg, flag, False)
+    if cfg.debug_sqli_mode is not None:
+        settings.debug_sqli_mode = cfg.debug_sqli_mode
+    if cfg.debug_price_mode is not None:
+        settings.debug_price_mode = cfg.debug_price_mode
+    if cfg.debug_access_mode is not None:
+        settings.debug_access_mode = cfg.debug_access_mode
+    if cfg.debug_mode is not None:
+        settings.debug_mode = cfg.debug_mode
+        settings.debug = cfg.debug_mode
+    if cfg.cors_wildcard is not None:
+        settings.cors_wildcard = cfg.cors_wildcard
+    return {
+        "status": "ok",
+        "debug_sqli_mode": settings.debug_sqli_mode,
+        "debug_price_mode": settings.debug_price_mode,
+        "debug_access_mode": settings.debug_access_mode,
+        "debug_mode": settings.debug_mode,
+        "cors_wildcard": settings.cors_wildcard,
+    }
 
-@router.get("/status/{run_id}", response_model=ScenarioResult)
-def run_status(run_id: str):
-    raise _not_implemented()
-
-
-@router.post("/reset")
-def reset_twin() -> dict:
-    raise _not_implemented()
-
-
-@router.post("/replay/{run_id}")
-def replay_run(run_id: str) -> dict:
-    raise _not_implemented()

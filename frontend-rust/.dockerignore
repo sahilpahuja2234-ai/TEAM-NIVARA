@@ -1,0 +1,9 @@
+.git
+.gitignore
+.github
+tests/
+target/
+dist/
+node_modules/
+*.log
+.env

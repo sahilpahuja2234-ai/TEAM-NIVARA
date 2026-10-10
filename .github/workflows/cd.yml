@@ -1,0 +1,88 @@
+# ============================================================
+# NIVARA — Continuous Delivery
+# Branch:   feature/devsecops  (Member 4 owns this file)
+# Trigger:  push to main ONLY
+#           (CI must have already passed before any PR merges)
+#
+# Flow: build full stack → smoke-test health endpoint → seed DB
+# ============================================================
+
+name: CD
+
+on:
+  push:
+    branches: [main]
+
+# Only one deployment at a time
+concurrency:
+  group: cd-main
+  cancel-in-progress: false   # let the running deploy finish
+
+jobs:
+  deploy:
+    name: "Deploy — build, start, health-check, seed"
+    runs-on: ubuntu-latest
+
+    # Runtime secrets are optional for the demo; set them in repo Settings → Secrets
+    env:
+      JWT_SECRET: ${{ secrets.JWT_SECRET || 'nivara_ci_deploy_secret' }}
+      SEED: "42"
+      CORS_ORIGINS: "http://localhost:3000"
+      DEBUG_SQLI_MODE: "false"
+      DEBUG_PRICE_MODE: "false"
+      DEBUG_ACCESS_MODE: "false"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Enable BuildKit so docker compose build uses layer cache
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # --------------------------------------------------
+      # Build all images defined in docker-compose.yml
+      # --------------------------------------------------
+      - name: Build Docker images (docker compose build)
+        run: docker compose build --parallel
+
+      # --------------------------------------------------
+      # Start the full stack and wait for healthchecks
+      # --------------------------------------------------
+      - name: Start NIVARA stack (docker compose up)
+        run: docker compose up -d --wait
+        # --wait polls each service's healthcheck and exits when all are healthy
+        # or fails if any container exits unexpectedly
+
+      # --------------------------------------------------
+      # Smoke test — verify the backend API is reachable
+      # --------------------------------------------------
+      - name: Wait for backend to stabilise
+        run: sleep 5
+
+      - name: Health check — GET /health
+        run: |
+          curl -f --retry 5 --retry-delay 3 --retry-connrefused \
+            http://localhost:8000/health \
+            -H "Accept: application/json"
+
+      # --------------------------------------------------
+      # Seed deterministic data into the live container
+      # (idempotent — safe to re-run on every deploy)
+      # --------------------------------------------------
+      - name: Seed synthetic bookstore data
+        run: docker compose exec -T backend python app/db/seed.py
+
+      # --------------------------------------------------
+      # Optional: print logs for debugging on failure
+      # --------------------------------------------------
+      - name: Dump container logs on failure
+        if: failure()
+        run: docker compose logs --no-color
+
+      # --------------------------------------------------
+      # Tear down (keeps runner clean)
+      # --------------------------------------------------
+      - name: Tear down stack
+        if: always()
+        run: docker compose down -v

@@ -5,6 +5,8 @@ aiosqlite
 python-jose[cryptography]
 passlib[bcrypt]
 python-dotenv
+# Pydantic v2 EmailStr requires this
+email-validator
 # Pinned exactly: Faker's name/word data changes between releases, so an unpinned
 # version would silently change the "deterministic" dataset.
 faker==40.41.0
@@ -18,3 +20,5 @@ pydantic-settings
 # - passlib is unmaintained and breaks against bcrypt 5.x (it raises on its
 #   internal 72-byte wrap-bug probe), so keep bcrypt on the 4.x line.
 bcrypt<5
+jinja2
+

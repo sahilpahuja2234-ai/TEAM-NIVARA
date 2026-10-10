@@ -1,5 +1,5 @@
-"""Pydantic request/response schemas."""
+"""app/schemas package.
 
-from app.schemas.scenario import ScenarioResult
-
-__all__ = ["ScenarioResult"]
+Each sub-module is imported directly by the routes that need it.
+This __init__.py intentionally stays minimal to avoid circular import issues.
+"""

@@ -1,10 +1,12 @@
-"""/api/reports/* - generate, download. M4 fills these in."""
+"""/api/reports/* — generate, download.
+
+Sub-router: app/routes/reports/reports.py owns all route handlers.
+M4 (report generator) fills the real ReportGenerator call.
+"""
 
 from fastapi import APIRouter
 
+from app.routes.reports import reports
+
 router = APIRouter()
-
-
-@router.get("/ping")
-def ping() -> dict[str, str]:
-    return {"group": "reports", "status": "ok"}
+router.include_router(reports.router)

@@ -41,6 +41,8 @@ class Settings(BaseSettings):
     # deliberately vulnerable code paths used by scenarios S04, S07 and S06.
     # They must stay false by default.
     debug: bool = False
+    debug_mode: bool = False
+    cors_wildcard: bool = False
     twin_url: str = "http://localhost:8000"
     debug_sqli_mode: bool = False
     debug_price_mode: bool = False

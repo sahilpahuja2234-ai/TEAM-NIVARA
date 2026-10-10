@@ -1,0 +1,53 @@
+# NIVARA — CODEOWNERS
+# Defines who must review changes to each part of the repository.
+# Reference: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+#
+# Format:  <pattern>   <owner> [<owner2> ...]
+# Rules are evaluated top-to-bottom; the LAST matching rule wins.
+
+# -------------------------------------------------------------------
+# DEFAULT — every file requires a review from *someone* on the team
+# -------------------------------------------------------------------
+*                                   @all
+
+# -------------------------------------------------------------------
+# Shared contracts (result schema, shared models)
+# Changes need sign-off from ALL four members because they affect
+# the integration boundary between every branch.
+# -------------------------------------------------------------------
+shared/                             @m1-handle @m2-handle @m3-handle @m4-handle
+
+# -------------------------------------------------------------------
+# Member 1 — Rust Frontend
+# -------------------------------------------------------------------
+frontend-rust/                      @m1-handle
+
+# -------------------------------------------------------------------
+# Member 2 — FastAPI Backend + Database
+# -------------------------------------------------------------------
+backend-python/app/routes/          @m2-handle
+backend-python/app/services/        @m2-handle
+backend-python/app/db/              @m2-handle
+backend-python/app/schemas/         @m2-handle
+backend-python/app/auth/            @m2-handle
+
+# -------------------------------------------------------------------
+# Member 3 — Attack Engine + Scenarios
+# -------------------------------------------------------------------
+scenarios/                          @m3-handle
+
+# -------------------------------------------------------------------
+# Member 4 — CI/CD + Security + Scoring + Reports
+# -------------------------------------------------------------------
+.github/                            @m4-handle
+docker-compose.yml                  @m4-handle
+backend-python/app/security/        @m4-handle
+backend-python/Dockerfile           @m4-handle
+frontend-rust/Dockerfile            @m4-handle
+
+# -------------------------------------------------------------------
+# Documentation — any member can update, but at least one reviewer
+# is required (handled by the default * rule above)
+# -------------------------------------------------------------------
+docs/                               @m1-handle @m2-handle @m3-handle @m4-handle
+*.md                                @m1-handle @m2-handle @m3-handle @m4-handle

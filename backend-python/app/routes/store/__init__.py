@@ -1,13 +1,29 @@
-"""/api/store/* - catalog, search, auth, cart, checkout, orders, reviews, coupons, admin.
+"""/api/store/* — catalog, search, auth, cart, checkout, orders, reviews, coupons, admin.
 
-Add sub-routers here with router.include_router(...) as each module lands.
+Sub-router registration:
+  /api/store/auth/*      ← auth.py
+  /api/store/catalog/*   ← catalog.py (also /categories)
+  /api/store/cart/*      ← cart.py
+  /api/store/orders/*    ← orders.py
+  /api/store/reviews     ← reviews.py
+  /api/store/admin/*     ← admin.py
 """
 
 from fastapi import APIRouter
 
+from app.routes.store import admin, auth, cart, catalog, orders, reviews
+
 router = APIRouter()
 
-
-@router.get("/ping")
+# Health ping — kept for quick smoke-test
+@router.get("/ping", include_in_schema=False)
 def ping() -> dict[str, str]:
     return {"group": "store", "status": "ok"}
+
+
+router.include_router(auth.router)
+router.include_router(catalog.router)
+router.include_router(cart.router)
+router.include_router(orders.router)
+router.include_router(reviews.router)
+router.include_router(admin.router)
